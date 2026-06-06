@@ -1,0 +1,231 @@
+import requests
+import pandas as pd
+
+# Fonction de détection des Fair Value Gaps
+def detect_fvg(df, body_multiplier=1.5):
+    """
+    Detect Fair Value Gaps in price data
+    Returns a list of FVG data with the same length as the input dataframe
+    """
+    fvg_list = [None] * len(df)  # Initialize with None values for all rows
+
+    # Calculate average body size
+    df['body_size'] = abs(df['Close'] - df['Open'])
+    avg_body_size = df['body_size'].mean()
+    body_size = avg_body_size if avg_body_size > 0 else 0.001
+
+    # We need at least 3 candles to detect an FVG
+    for i in range(2, len(df)):
+        # Get data for 3 consecutive candles
+        first_high = df['High'].iloc[i-2]
+        first_low = df['Low'].iloc[i-2]
+
+        middle_open = df['Open'].iloc[i-1]
+        middle_close = df['Close'].iloc[i-1]
+        middle_body = abs(middle_close - middle_open)
+
+        third_high = df['High'].iloc[i]
+        third_low = df['Low'].iloc[i]
+
+        # Check for Bullish FVG
+        if third_low > first_high and middle_body > avg_body_size * body_multiplier:
+            fvg_list[i] = ('bullish', first_high, third_low)
+
+        # Check for Bearish FVG
+        elif third_high < first_low and middle_body > avg_body_size * body_multiplier:
+            fvg_list[i] = ('bearish', first_low, third_high)
+
+    return fvg_list
+
+# 1. Récupérer la liste des paires SPOT
+url = 'https://www.okx.com'
+endpoint = '/api/v5/market/tickers'
+params = {'instType': 'SPOT'}
+
+response = requests.get(url + endpoint, params=params)
+data = response.json()
+
+spot_pairs = data['data']
+
+# Filter for USDT pairs only
+usdt_pairs = [pair for pair in spot_pairs if 'USDT' in pair['instId']]
+
+print(f"Successfully retrieved {len(usdt_pairs)} USDT SPOT trading pairs.")
+
+# 2. Boucler sur les paires et récupérer les données historiques (20 dernières bougies)
+all_pairs_historical_data = {}
+
+print(f"Fetching historical data for {len(usdt_pairs)} USDT SPOT pairs...")
+
+for pair_info in usdt_pairs:
+    inst_id = pair_info['instId']
+
+    # Construct API URL for historical candles
+    candles_endpoint = f'/api/v5/market/candles?instId={inst_id}&bar=1D&limit=20'
+
+    try:
+        response = requests.get(url + candles_endpoint)
+        data = response.json()
+
+        if data['code'] == '0' and data['data']:
+            # Create DataFrame from historical data
+            df = pd.DataFrame(data['data'])
+            df.columns = ["Date", "Open", "High", "Low", "Close", "Vol", "volCcy", "volCcyQuote", "confirm"]
+
+            # Convert data types
+            df['Open'] = df['Open'].astype(float)
+            df['High'] = df['High'].astype(float)
+            df['Low'] = df['Low'].astype(float)
+            df['Close'] = df['Close'].astype(float)
+            df['Vol'] = df['Vol'].astype(float)
+            df['confirm'] = df['confirm'].astype(int) # Ensure 'confirm' is integer type
+
+            df['Date'] = df['Date'].astype('int').astype('datetime64[ms]')
+            df.set_index('Date', inplace=True)
+            df = df.sort_index()
+
+            # Filter for confirmed candles only
+            df = df[df['confirm'] == 1]
+
+            # Only add to historical data if there are still enough candles after filtering
+            if len(df) >= 3: # Need at least 3 candles for FVG detection
+                all_pairs_historical_data[inst_id] = df
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data for {inst_id}: {e}")
+    except KeyError as e:
+        print(f"Data format error for {inst_id}: {e} in response: {data}")
+
+print(f"Successfully retrieved historical data for {len(all_pairs_historical_data)} out of {len(usdt_pairs)} USDT SPOT pairs.")
+
+# 3. Détecter les FVG pour chaque paire
+fvg_detected_pairs = {}
+
+print("Detecting Fair Value Gaps for each pair...")
+
+for inst_id, df in all_pairs_historical_data.items():
+    # Apply the detect_fvg function
+    fvg_list = detect_fvg(df, body_multiplier=1.5) # Uses body_multiplier=1.5 as default
+
+    # Check if any FVGs were detected (i.e., not all values are None)
+    if any(fvg is not None for fvg in fvg_list):
+        fvg_detected_pairs[inst_id] = fvg_list
+
+print(f"Fair Value Gaps detected in {len(fvg_detected_pairs)} out of {len(all_pairs_historical_data)} USDT SPOT pairs.")
+
+# 4. Préparer les résultats pour l'affichage et le HTML
+screener_results_all = []
+
+for inst_id, fvgs in fvg_detected_pairs.items():
+    original_df = all_pairs_historical_data[inst_id]
+    for idx, fvg in enumerate(fvgs):
+        if fvg is not None:
+            fvg_type, level1, level2 = fvg
+
+            # Conditional assignment of fvg_date and displayed_candle_idx based on fvg_type
+            if fvg_type == 'bullish':
+                fvg_date = original_df.index[idx] # Date of the third candle
+                displayed_candle_idx = idx # Index of the third candle
+            else: # bearish
+                fvg_date = original_df.index[idx - 1] # Date of the middle candle
+                displayed_candle_idx = idx - 1 # Index of the middle candle
+
+            # Calculate gap percentage
+            if (level1 + level2) / 2 != 0:
+                gap_percentage = (abs(level1 - level2) / ((level1 + level2) / 2)) * 100
+            else:
+                gap_percentage = 0.0 # Handle cases where levels might be zero, though unlikely for prices
+
+            screener_results_all.append({
+                'inst_id': inst_id,
+                'fvg_date': fvg_date,
+                'fvg_type': fvg_type,
+                'level1': level1,
+                'level2': level2,
+                'gap_percentage': gap_percentage, # New field
+                'candle_idx': displayed_candle_idx # Store the index of the candle whose date is used
+            })
+
+# Sort the results by date (descending) then by instrument ID (ascending)
+screener_results_sorted = sorted(screener_results_all, key=lambda x: (x['fvg_date'], x['inst_id']), reverse=True)
+
+# Afficher les paires avec FVG détectés (liste complète)
+print("\n--- Fair Value Gaps Detected Screener (Complete List) ---")
+
+for result in screener_results_sorted:
+    inst_id = result['inst_id']
+    tradingview_symbol = inst_id.replace('-', '')
+    tradingview_url = f"https://www.tradingview.com/chart/?symbol=OKX%3A{tradingview_symbol}"
+    print(f"{inst_id} - {result['fvg_type'].capitalize()} FVG on {result['fvg_date'].strftime('%Y-%m-%d')} (candle {result['candle_idx']}): [{result['level1']:.4f}, {result['level2']:.4f}] - Gap: {result['gap_percentage']:.2f}% - {tradingview_url}")
+
+# Générer le fichier HTML
+html_content = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fair Value Gaps Screener Results</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        h1 { color: #0056b3; text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #fff; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        tr:hover { background-color: #ddd; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>Fair Value Gaps Screener Results</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Instrument</th>
+                <th>Type FVG</th>
+                <th>Date FVG</th>
+                <th>Level 1</th>
+                <th>Level 2</th>
+                <th>Gap %</th> <!-- New header -->
+                <th>TradingView Chart</th>
+            </tr>
+        </thead>
+        <tbody>
+"""
+
+for result in screener_results_sorted:
+    inst_id = result['inst_id']
+    fvg_type = result['fvg_type'].capitalize()
+    fvg_date = result['fvg_date'].strftime('%Y-%m-%d')
+    level1 = f"{result['level1']:.4f}"
+    level2 = f"{result['level2']:.4f}"
+    gap_percentage = f"{result['gap_percentage']:.2f}%" # Get and format new field
+
+    tradingview_symbol = inst_id.replace('-', '')
+    tradingview_url = f"https://www.tradingview.com/chart/?symbol=OKX%3A{tradingview_symbol}"
+
+    html_content += f"""
+            <tr>
+                <td>{inst_id}</td>
+                <td>{fvg_type}</td>
+                <td>{fvg_date}</td>
+                <td>{level1}</td>
+                <td>{level2}</td>
+                <td>{gap_percentage}</td> <!-- New data cell -->
+                <td><a href=\"{tradingview_url}\" target=\"_blank\">View Chart</a></td>
+            </tr>
+"""
+
+html_content += """
+        </tbody>
+    </table>
+</body>
+</html>
+"""
+
+with open('fvg_screener_results.html', 'w') as f:
+    f.write(html_content)
+
+print("HTML file 'fvg_screener_results.html' has been created.")
