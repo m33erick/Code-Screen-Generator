@@ -19,7 +19,7 @@ function formatPrice(n: number): string {
 
 function getTvUrl(instId: string): string {
   const sym = instId.replace(/-/g, "");
-  return `https://www.tradingview.com/chart/?symbol=OKX%3A${sym}`;
+  return `https://www.tradingview.com/chart/?aff_id=161811&symbol=OKX%3A${sym}`;
 }
 
 export default function Screener() {
