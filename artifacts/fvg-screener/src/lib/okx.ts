@@ -6,13 +6,21 @@ export interface Ticker {
   instId: string;
   last: string;
   vol24h: string;
+  volCcy24h: string;
+  volRank: number;
 }
 
 export async function fetchUsdtSpotPairs(): Promise<Ticker[]> {
   const res = await fetch(`${OKX_BASE}/api/v5/market/tickers?instType=SPOT`);
   const data = await res.json();
-  const all: Ticker[] = data.data ?? [];
-  return all.filter((t) => t.instId.endsWith("-USDT"));
+  const all: (Ticker & { volCcy24h: string })[] = data.data ?? [];
+  const usdt = all.filter((t) => t.instId.endsWith("-USDT"));
+
+  // Sort by 24h volume in USDT descending and assign rank
+  usdt.sort((a, b) => parseFloat(b.volCcy24h) - parseFloat(a.volCcy24h));
+  usdt.forEach((t, i) => { t.volRank = i + 1; });
+
+  return usdt;
 }
 
 export async function fetchCandles(instId: string, bar = "1D", limit = 20): Promise<Candle[] | null> {

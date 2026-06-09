@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { fetchUsdtSpotPairs, fetchCandles } from "@/lib/okx";
 import { detectFvg, buildFvgResults, type FvgResult } from "@/lib/fvg";
 
-type SortKey = "fvgDate" | "instId" | "fvgType" | "gapPercentage";
+type SortKey = "fvgDate" | "instId" | "fvgType" | "gapPercentage" | "volRank";
 type SortDir = "asc" | "desc";
 type FilterType = "all" | "bullish" | "bearish";
 
@@ -54,7 +54,7 @@ export default function Screener() {
             const candles = await fetchCandles(ticker.instId);
             if (!candles) return;
             const fvgList = detectFvg(candles, 1.5);
-            const found = buildFvgResults(ticker.instId, candles, fvgList);
+            const found = buildFvgResults(ticker.instId, candles, fvgList, ticker.volRank);
             if (found.length > 0) allResults.push(...found);
           })
         );
@@ -103,6 +103,7 @@ export default function Screener() {
       else if (sortKey === "instId") cmp = a.instId.localeCompare(b.instId);
       else if (sortKey === "fvgType") cmp = a.fvgType.localeCompare(b.fvgType);
       else if (sortKey === "gapPercentage") cmp = a.gapPercentage - b.gapPercentage;
+      else if (sortKey === "volRank") cmp = a.volRank - b.volRank;
       return sortDir === "asc" ? cmp : -cmp;
     });
 
@@ -240,16 +241,18 @@ export default function Screener() {
                 <thead>
                   <tr className="bg-slate-800/80 text-slate-400 text-xs uppercase tracking-wider">
                     {[
-                      { label: "Instrument", key: "instId" as SortKey },
-                      { label: "Type", key: "fvgType" as SortKey },
-                      { label: "Date", key: "fvgDate" as SortKey },
-                      { label: "Level 1", key: null },
-                      { label: "Level 2", key: null },
-                      { label: "Gap %", key: "gapPercentage" as SortKey },
-                      { label: "Chart", key: null },
+                      { label: "Vol Rank", key: "volRank" as SortKey, title: "Rang par volume 24h USDT (proxy market cap)" },
+                      { label: "Instrument", key: "instId" as SortKey, title: undefined },
+                      { label: "Type", key: "fvgType" as SortKey, title: undefined },
+                      { label: "Date", key: "fvgDate" as SortKey, title: undefined },
+                      { label: "Level 1", key: null, title: undefined },
+                      { label: "Level 2", key: null, title: undefined },
+                      { label: "Gap %", key: "gapPercentage" as SortKey, title: undefined },
+                      { label: "Chart", key: null, title: undefined },
                     ].map((col) => (
                       <th
                         key={col.label}
+                        title={col.title}
                         className={`px-4 py-3 text-left whitespace-nowrap ${col.key ? "cursor-pointer hover:text-white select-none" : ""}`}
                         onClick={() => col.key && toggleSort(col.key)}
                       >
@@ -265,6 +268,17 @@ export default function Screener() {
                       key={`${r.instId}-${r.fvgDate.getTime()}-${i}`}
                       className="hover:bg-slate-800/50 transition-colors"
                     >
+                      <td className="px-4 py-3 whitespace-nowrap text-center" title="Rang volume 24h USDT (1 = plus grand volume)">
+                        <span className={`inline-block font-mono font-semibold text-xs px-2 py-0.5 rounded ${
+                          r.volRank <= 10
+                            ? "bg-yellow-900/50 text-yellow-300 border border-yellow-700"
+                            : r.volRank <= 50
+                            ? "bg-slate-700 text-slate-200 border border-slate-600"
+                            : "text-slate-500"
+                        }`}>
+                          #{r.volRank}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 font-semibold text-white whitespace-nowrap">
                         {r.instId}
                       </td>

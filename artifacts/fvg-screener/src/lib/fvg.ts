@@ -17,6 +17,7 @@ export interface FvgResult {
   level2: number;
   gapPercentage: number;
   candleIdx: number;
+  volRank: number;
 }
 
 export function detectFvg(candles: Candle[], bodyMultiplier = 1.5): (["bullish" | "bearish", number, number] | null)[] {
@@ -46,7 +47,7 @@ export function detectFvg(candles: Candle[], bodyMultiplier = 1.5): (["bullish" 
   return result;
 }
 
-export function buildFvgResults(instId: string, candles: Candle[], fvgList: (["bullish" | "bearish", number, number] | null)[]): FvgResult[] {
+export function buildFvgResults(instId: string, candles: Candle[], fvgList: (["bullish" | "bearish", number, number] | null)[], volRank: number): FvgResult[] {
   const results: FvgResult[] = [];
 
   for (let idx = 0; idx < fvgList.length; idx++) {
@@ -76,6 +77,7 @@ export function buildFvgResults(instId: string, candles: Candle[], fvgList: (["b
       level2,
       gapPercentage,
       candleIdx: displayedCandleIdx,
+      volRank,
     });
   }
 
