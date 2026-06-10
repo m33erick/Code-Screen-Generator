@@ -241,7 +241,7 @@ export default function Screener() {
                 <thead>
                   <tr className="bg-slate-800/80 text-slate-400 text-xs uppercase tracking-wider">
                     {[
-                      { label: "Vol Rank", key: "volRank" as SortKey, title: "Rang par volume 24h USDT (proxy market cap)" },
+                      { label: "Score Rank", key: "volRank" as SortKey, title: "Rang par score = Prix × Volume 24h USDT (inspiré du classement Python)" },
                       { label: "Instrument", key: "instId" as SortKey, title: undefined },
                       { label: "Type", key: "fvgType" as SortKey, title: undefined },
                       { label: "Date", key: "fvgDate" as SortKey, title: undefined },
@@ -268,7 +268,7 @@ export default function Screener() {
                       key={`${r.instId}-${r.fvgDate.getTime()}-${i}`}
                       className="hover:bg-slate-800/50 transition-colors"
                     >
-                      <td className="px-4 py-3 whitespace-nowrap text-center" title="Rang volume 24h USDT (1 = plus grand volume)">
+                      <td className="px-4 py-3 whitespace-nowrap text-center" title="Rang score = Prix × Vol24h USDT (1 = meilleur score)">
                         <span className={`inline-block font-mono font-semibold text-xs px-2 py-0.5 rounded ${
                           r.volRank <= 10
                             ? "bg-yellow-900/50 text-yellow-300 border border-yellow-700"

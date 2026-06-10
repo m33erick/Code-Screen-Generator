@@ -1,0 +1,103 @@
+load_dotenv()
+
+# === CONFIGURATION ===
+OKX_BASE = os.getenv("OKX_API_BASE", "https://www.okx.com")
+TICKERS_ENDPOINT = "/api/v5/market/tickers"
+PAIR_FILTER = "USDT"     # on ne garde que les paires en USDT
+MIN_VOL = 0              # seuil min de volume si besoin
+OUTPUT_LIMIT = 100       # combien de cryptos retourner
+
+# Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s"
+)
+
+# === FONCTIONS ===
+
+def fetch_okx_tickers():
+    """Récupère les tickers SPOT d’OKX"""
+    url = urljoin(OKX_BASE, TICKERS_ENDPOINT)
+    params = {"instType": "SPOT"}
+
+    try:
+        r = requests.get(url, params=params, timeout=8)
+        r.raise_for_status()
+        data = r.json()
+
+        if data.get("code") != "0":
+            logging.error("Erreur API OKX: %s", data)
+            return []
+
+        return data.get("data", [])
+    except Exception as e:
+        logging.error("Erreur réseau / API OKX: %s", e)
+        return []
+
+
+def compute_scores(tickers):
+    """Calcul des scores relatifs"""
+    ranked = []
+    now = datetime.utcnow()
+
+    for tk in tickers:
+        inst = tk.get("instId", "")
+        # filtrer USDT uniquement
+        if PAIR_FILTER not in inst:
+            continue
+
+        try:
+            price = float(tk.get("last", 0))
+            vol24 = float(tk.get("volCcy24h", 0))
+
+            # on peut filtrer les micro volumes
+            if vol24 < MIN_VOL:
+                continue
+
+            score = price * vol24
+
+            ranked.append({
+                "symbol": inst,
+                "price": price,
+                "volume_24h": vol24,
+                "score": score,
+                "ts": now.isoformat() + "Z"
+            })
+        except Exception as e:
+            logging.warning("Parsing ticker failed: %s -> %s", inst, e)
+            continue
+
+    # tri décroissant
+    ranked.sort(key=lambda x: x["score"], reverse=True)
+    return ranked
+
+
+def format_output(ranked):
+    """Format JSON ou CSV ou DB selon besoin"""
+    # ici on garde juste les X premiers
+    out = ranked[:OUTPUT_LIMIT]
+
+    # ajout du rank
+    for i, item in enumerate(out, 1):
+        item["rank"] = i
+
+    return out
+
+
+def main():
+    logging.info("Fetching tickers from OKX...")
+    tickers = fetch_okx_tickers()
+    if not tickers:
+        logging.error("Aucune donnée tickers reçue")
+        return
+
+    logging.info("Computing ranking...")
+    ranked = compute_scores(tickers)
+    out = format_output(ranked)
+
+    # print JSON (on peut aussi écrire dans Redis / DB / API)
+    import json
+    print(json.dumps(out, indent=2))
+
+if __name__ == "__main__":
+    main()

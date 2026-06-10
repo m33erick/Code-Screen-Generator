@@ -8,16 +8,24 @@ export interface Ticker {
   vol24h: string;
   volCcy24h: string;
   volRank: number;
+  score: number;
 }
 
 export async function fetchUsdtSpotPairs(): Promise<Ticker[]> {
   const res = await fetch(`${OKX_BASE}/api/v5/market/tickers?instType=SPOT`);
   const data = await res.json();
-  const all: (Ticker & { volCcy24h: string })[] = data.data ?? [];
+  const all: Ticker[] = data.data ?? [];
   const usdt = all.filter((t) => t.instId.endsWith("-USDT"));
 
-  // Sort by 24h volume in USDT descending and assign rank
-  usdt.sort((a, b) => parseFloat(b.volCcy24h) - parseFloat(a.volCcy24h));
+  // Score = price × vol24h_USDT (same formula as Python reference)
+  usdt.forEach((t) => {
+    const price = parseFloat(t.last) || 0;
+    const vol24 = parseFloat(t.volCcy24h) || 0;
+    t.score = price * vol24;
+  });
+
+  // Sort by score descending and assign rank
+  usdt.sort((a, b) => b.score - a.score);
   usdt.forEach((t, i) => { t.volRank = i + 1; });
 
   return usdt;
