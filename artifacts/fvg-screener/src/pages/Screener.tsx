@@ -31,6 +31,7 @@ export default function Screener() {
   const [sortKey, setSortKey] = useState<SortKey>("fvgDate");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [minGap, setMinGap] = useState("");
+  const [maxRank, setMaxRank] = useState("");
   const abortRef = useRef(false);
 
   const run = useCallback(async () => {
@@ -89,12 +90,14 @@ export default function Screener() {
   };
 
   const minGapNum = parseFloat(minGap) || 0;
+  const maxRankNum = parseInt(maxRank) || 0;
 
   const filtered = results
     .filter((r) => {
       if (filterType !== "all" && r.fvgType !== filterType) return false;
       if (search && !r.instId.toLowerCase().includes(search.toLowerCase())) return false;
       if (minGapNum > 0 && r.gapPercentage < minGapNum) return false;
+      if (maxRankNum > 0 && r.volRank > maxRankNum) return false;
       return true;
     })
     .sort((a, b) => {
@@ -229,6 +232,16 @@ export default function Screener() {
               className="w-28 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
               min="0"
               step="0.1"
+            />
+            <input
+              type="number"
+              placeholder="Top N rank"
+              value={maxRank}
+              onChange={(e) => setMaxRank(e.target.value)}
+              title="Afficher uniquement les FVGs dont le Score Rank est ≤ N (ex: 50 = top 50)"
+              className="w-28 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              min="1"
+              step="1"
             />
           </div>
         )}
@@ -376,7 +389,7 @@ export default function Screener() {
           <div className="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center">
             <p className="text-slate-400">Aucun résultat ne correspond aux filtres.</p>
             <button
-              onClick={() => { setSearch(""); setFilterType("all"); setMinGap(""); }}
+              onClick={() => { setSearch(""); setFilterType("all"); setMinGap(""); setMaxRank(""); }}
               className="mt-3 text-sm text-blue-400 hover:text-blue-300"
             >
               Réinitialiser les filtres
