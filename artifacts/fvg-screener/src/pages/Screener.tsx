@@ -132,7 +132,7 @@ export default function Screener() {
               </svg>
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-white">FVG Screener</h1>
+              <h1 className="text-lg font-bold tracking-tight text-white">Screener FVG Crypto – Fair Value Gap &amp; Smart Money</h1>
               <p className="text-xs text-slate-400">Fair Value Gaps — OKX USDT SPOT · 1D</p>
             </div>
           </div>
@@ -396,6 +396,60 @@ export default function Screener() {
             </button>
           </div>
         )}
+
+        {/* SEO Content Section */}
+        <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 sm:p-8 space-y-5 text-sm text-slate-400 leading-relaxed">
+          <div>
+            <h2 className="text-base font-semibold text-white mb-2">Screener FVG Crypto – Fair Value Gap en Temps Réel</h2>
+            <p>
+              Ce screener FVG crypto est conçu pour identifier rapidement les{" "}
+              <strong className="text-slate-200">Fair Value Gaps (FVG)</strong> sur les principales cryptomonnaies.
+              Il s'adresse aux traders utilisant les concepts{" "}
+              <em>Smart Money</em> et <em>ICT</em>, cherchant des zones de déséquilibre
+              de prix exploitables sur les marchés crypto.
+            </p>
+            <p className="mt-3">
+              Contrairement à un classement basé uniquement sur la market cap,
+              ce screener analyse les cryptos selon un{" "}
+              <strong className="text-slate-200">rang relatif combinant prix, volume et dynamique de marché</strong>.
+              Cela permet de faire ressortir les actifs les plus actifs,
+              souvent précurseurs de la formation ou du comblement de FVG.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-2">Qu'est-ce qu'un Fair Value Gap (FVG) en crypto ?</h3>
+            <p>
+              Un Fair Value Gap correspond à une zone où le prix s'est déplacé
+              de manière impulsive, laissant un déséquilibre entre acheteurs et vendeurs.
+              En trading crypto, les FVG sont souvent revisités par le marché,
+              offrant des opportunités d'entrée à forte probabilité.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-2">Pourquoi utiliser un screener FVG crypto ?</h3>
+            <ul className="space-y-1.5 list-none">
+              {[
+                "Identifier rapidement les cryptos présentant des déséquilibres de prix",
+                "Gagner du temps sans scanner manuellement chaque graphique",
+                "Repérer les actifs alignés avec une logique Smart Money",
+                "Compléter une stratégie de trading ICT ou price action",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <span className="mt-1 w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3">
+              Ce screener FVG crypto est mis à jour régulièrement afin de fournir
+              une vision claire et exploitable du marché.
+              Il constitue un outil complémentaire idéal pour les traders
+              souhaitant structurer leur analyse avant de passer sur les graphiques.
+            </p>
+          </div>
+        </section>
 
         {/* Footer */}
         <div className="text-center text-xs text-slate-600 pb-4">
