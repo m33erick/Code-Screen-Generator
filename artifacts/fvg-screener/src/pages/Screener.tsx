@@ -451,6 +451,33 @@ export default function Screener() {
           </div>
         </section>
 
+        {/* FAQ Section */}
+        <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 sm:p-8 space-y-5 text-sm text-slate-400 leading-relaxed">
+          <h2 className="text-base font-semibold text-white">FAQ – Screener FVG Crypto</h2>
+
+          <div className="space-y-4">
+            {[
+              {
+                q: "Qu'est-ce qu'un screener FVG crypto ?",
+                a: "Un screener FVG crypto est un outil permettant d'identifier rapidement les Fair Value Gaps sur les cryptomonnaies, sans analyser chaque graphique manuellement.",
+              },
+              {
+                q: "Le screener FVG est-il basé sur la market cap ?",
+                a: "Non. Ce screener utilise un rang relatif combinant prix et volume, plus pertinent pour détecter l'activité institutionnelle.",
+              },
+              {
+                q: "À qui s'adresse un screener FVG crypto ?",
+                a: "Aux traders utilisant les concepts Smart Money, ICT ou price action avancée sur les marchés crypto.",
+              },
+            ].map(({ q, a }) => (
+              <div key={q} className="border-t border-slate-800 pt-4 first:border-0 first:pt-0">
+                <h3 className="text-sm font-semibold text-white mb-1">{q}</h3>
+                <p>{a}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Footer */}
         <div className="text-center text-xs text-slate-600 pb-4">
           Données : OKX API publique · Détection : body_multiplier=1.5 · Timeframe : 1D · Bougies confirmées uniquement
